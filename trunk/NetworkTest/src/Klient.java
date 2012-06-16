@@ -1,17 +1,17 @@
-import java.awt.FlowLayout;
-import java.awt.Rectangle;
-import java.awt.Robot;
-import java.awt.Toolkit;
+import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
+import java.io.ObjectInputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
+import java.text.DateFormat;
+import java.util.Date;
 
+import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 
@@ -20,12 +20,27 @@ public class Klient extends JFrame {
 
 
 	private Socket socket;
-	ObjectOutputStream o = null;
-
-	public static void main(String[] args) {
-		new Klient().setVisible(true);
-
+	private ObjectInputStream is = null;
+	private BufferedImage image = null;
+	
+	
+	class Receiver extends Thread {
+		@Override
+		public void run() {
+			Screen b = null;
+			try {
+				while ((b = (Screen) is.readObject()) != null) {
+					Klient.this.image = b.getImage();
+					Klient.this.repaint();
+					
+					System.out.println("Odebrano screen"+DateFormat.getTimeInstance().format(new Date()));
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
+	
 	
 	public Klient() {
 		
@@ -53,12 +68,15 @@ public class Klient extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-					socket = new Socket("127.0.0.1", 1235);
+					socket = new Socket("192.168.1.4", 1235);
 					try {
-						o = new ObjectOutputStream(socket.getOutputStream());
+						is = new ObjectInputStream(socket.getInputStream());
 					} catch (IOException e1) {
 						e1.printStackTrace();
 					}
+					
+					new Receiver().start();
+					
 				} catch (Exception e1) {
 					e1.printStackTrace();
 				}
@@ -67,41 +85,21 @@ public class Klient extends JFrame {
 			}
 		});
 		
-		JButton shot = new JButton("SHOT!");
-		shot.addActionListener(new ActionListener() {
-			
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				Screen s = new Screen(captureScreenShot());
-				
-				
-				
-				try {
-					o.writeObject(s);
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-				
-			}
-		});
-		
-		this.getContentPane().setLayout(new FlowLayout());
+		this.getContentPane().setLayout(null);
 		this.getContentPane().add(connect);
-		this.getContentPane().add(shot);
+		connect.setBounds(0, 0, 200, 100);
+		//this.getContentPane().add(shot);
 		this.pack();
 	}
 	
-	BufferedImage captureScreenShot() {
-		Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit()
-				.getScreenSize());
-		BufferedImage capture;
-		try {
-			capture = new Robot().createScreenCapture(screenRect);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return null;
-		}
-		return capture;
+	@Override
+	public void paint(Graphics g) {
+		super.paint(g);
+		g.drawImage(image, 0, 0, null);
+	}
+	
+	public static void main(String[] args) {
+		new Klient().setVisible(true);
 	}
 
 }
