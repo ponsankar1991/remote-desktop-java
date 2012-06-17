@@ -26,6 +26,7 @@ import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
 
 public class Serwer extends JFrame {
@@ -48,10 +49,9 @@ public class Serwer extends JFrame {
 		public void run() {
 			try {
 				File screen = captureScreenShot();
-				File outputFile = new File("crscreen.jpg");
 				
 				
-				int fileLength = (int)outputFile.length();
+				int fileLength = (int)screen.length();
 				byte [] mybytearray  = new byte [fileLength];
 				BufferedInputStream bis = new BufferedInputStream(new FileInputStream(screen));
 				bis.read(mybytearray,0,mybytearray.length);
@@ -130,6 +130,7 @@ public class Serwer extends JFrame {
 			robot.mouseMove(p.x, p.y);
 			robot.mousePress(InputEvent.BUTTON1_MASK);
             robot.mouseRelease(InputEvent.BUTTON1_MASK);
+            System.out.println("klik!");
 		}
 	}
 	

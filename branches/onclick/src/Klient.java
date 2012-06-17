@@ -79,6 +79,7 @@ public class Klient extends JFrame implements MouseListener {
 	public Klient() {
 		
 		createGUI();
+		this.addMouseListener(this);
 		this.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
