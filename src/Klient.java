@@ -1,6 +1,9 @@
 import java.awt.Graphics;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -10,6 +13,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.text.DateFormat;
 import java.util.Date;
@@ -19,11 +23,12 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 
 
-public class Klient extends JFrame {
+public class Klient extends JFrame implements MouseListener {
 
 
 	private Socket socket;
 	private InputStream is = null;
+	private ObjectOutputStream os = null;
 	private BufferedImage image = null;
 	
 	
@@ -100,6 +105,7 @@ public class Klient extends JFrame {
 					socket = new Socket("192.168.1.4", 1235);
 					try {
 						is = socket.getInputStream();
+						os = new ObjectOutputStream(socket.getOutputStream());
 					} catch (IOException e1) {
 						e1.printStackTrace();
 					}
@@ -114,11 +120,17 @@ public class Klient extends JFrame {
 			}
 		});
 		
+		
 		this.getContentPane().setLayout(null);
 		this.getContentPane().add(connect);
 		connect.setBounds(0, 0, 200, 100);
 		//this.getContentPane().add(shot);
-		this.pack();
+		//this.pack();
+		
+		this.setUndecorated(true);
+		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		this.setBounds(0, 0, 1280, 800);
+		this.setVisible(true);
 	}
 	
 	@Override
@@ -130,5 +142,29 @@ public class Klient extends JFrame {
 	public static void main(String[] args) {
 		new Klient().setVisible(true);
 	}
+
+	@Override
+	public void mouseClicked(MouseEvent e) {
+		try {
+			os.writeObject(new Point(e.getX(), e.getY()));
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}
+
+	@Override
+	public void mousePressed(MouseEvent e) {}
+
+	@Override
+	public void mouseReleased(MouseEvent e) {}
+
+	@Override
+	public void mouseEntered(MouseEvent e) {}
+
+	@Override
+	public void mouseExited(MouseEvent e) {}
+
+	
 
 }
