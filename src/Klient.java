@@ -1,5 +1,4 @@
 import java.awt.Graphics;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -23,20 +22,27 @@ import java.util.Date;
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-
-import pl.sieci.remote.RemoteClick;
-import pl.sieci.remote.RemoteClick.MouseState;
+import javax.swing.JPanel;
 
 
 public class Klient extends JFrame implements MouseListener, KeyListener {
-
 
 	private Socket socket;
 	private InputStream is = null;
 	private ObjectOutputStream os = null;
 	private BufferedImage image = null;
 	
+	private String hostName;
+	private int port;
+	private Config config = new Config();
 	
+	private JPanel contentPane = new JPanel();
+	
+	/**
+	 * 
+	 * @author Wojtek
+	 * Klasa odbierająca zrzuty ekranu od serwera.
+	 */
 	class Receiver extends Thread {
 		@Override
 		public void run() {
@@ -65,28 +71,28 @@ public class Klient extends JFrame implements MouseListener, KeyListener {
 
 			    bos.write(mybytearray, 0 , current);
 			    bos.flush();
+			    Klient.this.image = ImageIO.read(new File("rscreen.jpg"));
+			    
+			    
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		    
-		    try {
-				Klient.this.image = ImageIO.read(new File("rscreen.jpg"));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
 		    Klient.this.repaint();
 				
-			System.out.println("Odebrano screen"+DateFormat.getTimeInstance().format(new Date()));
+			System.out.println("Odebrano screen "+DateFormat.getTimeInstance().format(new Date()));
 		}
 	}
 	
 	
-	public Klient() {
+	public Klient(String hostName, int port) {
+		this.hostName = hostName;
+		this.port = port;
 		
 		createGUI();
-		this.addMouseListener(this);
-		this.getContentPane().addKeyListener(this);
-		this.getContentPane().requestFocusInWindow();//
+		
+		contentPane.addKeyListener(this);
+		contentPane.addMouseListener(this);
 		this.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
@@ -110,11 +116,11 @@ public class Klient extends JFrame implements MouseListener, KeyListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
-					socket = new Socket("192.168.1.4", 1235);
+					socket = new Socket(hostName, port);
 					try {
 						is = socket.getInputStream();
 						os = new ObjectOutputStream(socket.getOutputStream());
-						getContentPane().requestFocusInWindow();//
+						os.writeObject(config);
 					} catch (IOException e1) {
 						e1.printStackTrace();
 					}
@@ -123,33 +129,30 @@ public class Klient extends JFrame implements MouseListener, KeyListener {
 					
 				} catch (Exception e1) {
 					e1.printStackTrace();
+					//błąd połączenia
 				}
 				
 				
 			}
 		});
 		
-		
-		this.getContentPane().setLayout(null);
-		this.getContentPane().add(connect);
+		this.setContentPane(contentPane);
+		contentPane.setDoubleBuffered(true);
+		contentPane.setLayout(null);
+		contentPane.add(connect);
 		connect.setBounds(0, 0, 200, 100);
-		//this.getContentPane().add(shot);
-		//this.pack();
 		
 		this.setUndecorated(true);
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		this.setBounds(0, 0, 1280, 800);
+		this.setSize(config.imgWidth, config.imgHeight);
 		this.setVisible(true);
+		this.setLocationRelativeTo(null);
 	}
 	
 	@Override
 	public void paint(Graphics g) {
 		super.paint(g);
 		g.drawImage(image, 0, 0, null);
-	}
-	
-	public static void main(String[] args) {
-		new Klient().setVisible(true);
 	}
 
 	@Override
@@ -196,5 +199,9 @@ public class Klient extends JFrame implements MouseListener, KeyListener {
 
 	@Override
 	public void keyReleased(KeyEvent e) {}
+	
+	public static void main(String[] args) {
+		new Klient("127.0.0.1", 1235).setVisible(true);
+	}
 
 }
