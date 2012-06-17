@@ -1,4 +1,6 @@
 import java.awt.AWTException;
+import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.Toolkit;
@@ -27,15 +29,15 @@ import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 
-import pl.sieci.remote.RemoteClick;
-
 
 public class Serwer {
 	
-	//jakość pliku jpg (od 0 do 1)
-	private float quality = 0.1f;
-	//odstęp czasowy pomiędzy wysyłanymi zrzutami ekranu (w ms)
-	private int period = 1000;
+	//rozmiar ekranu na serwerze
+	private int screenWidth, screenHeight;
+	//port
+	private int port;
+	//konfiguracja
+	private Config config;
 	
 	/**
 	 * @author Wojtek
@@ -78,8 +80,13 @@ public class Serwer {
 			File compressed = new File("compressed.jpg");
 			try {
 				capture = robot.createScreenCapture(screenRect);
-				ImageIO.write(capture, "jpg", f);
 				
+				//resize 
+				BufferedImage resizedImage = new BufferedImage(config.imgWidth, config.imgHeight, BufferedImage.TYPE_INT_RGB);
+				Graphics2D g = resizedImage.createGraphics();
+				g.drawImage(capture, 0, 0, config.imgWidth, config.imgHeight, null);
+				g.dispose();				
+				ImageIO.write(resizedImage, "jpg", f);
 				
 				ImageReader imgRdr = ImageIO.getImageReadersByFormatName("jpg").next();
 				ImageWriter imgWrtr = ImageIO.getImageWritersByFormatName("jpg").next();
@@ -89,15 +96,13 @@ public class Serwer {
 				imgWrtr.setOutput(imgOutStrm);
 				IIOImage iioImg = new IIOImage(imgRdr.read(0), null, null); 
 
-				// set compression level 
+				//poziom kompresji
 				ImageWriteParam jpgWrtPrm = imgWrtr.getDefaultWriteParam();
 				jpgWrtPrm.setCompressionMode(JPEGImageWriteParam.MODE_EXPLICIT);
-				jpgWrtPrm.setCompressionQuality(0.1f);
+				jpgWrtPrm.setCompressionQuality(config.quality);
 
-				// write out JPEG
 				imgWrtr.write(null, iioImg, jpgWrtPrm);
-
-				// clean up 
+ 
 				imgInStrm.close();
 				imgOutStrm.close();
 
@@ -117,25 +122,82 @@ public class Serwer {
 	private OutputStream os;
 	private Robot robot;
 	
-	public Serwer() throws Exception {
-		ss = new ServerSocket(1235);
-		Socket socket = ss.accept();
-		is = new ObjectInputStream(socket.getInputStream());
-		os = socket.getOutputStream();
+	public void setQuality(float quality) {
+		this.config.quality = quality;
+	}
+
+	public void setPeriod(int period) {
+		this.config.period = period;
+	}
+
+	public void setImgWidth(int imgWidth) {
+		this.config.imgWidth = imgWidth;
+	}
+
+	public void setImgHeight(int imgHeight) {
+		this.config.imgHeight = imgHeight;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public Serwer(int port) {
+		//inicjalizacja zmiennych
+		this.port = port;
 		try {
 			robot = new Robot();
 		} catch (AWTException e) {
 			e.printStackTrace();
 		}
+		Rectangle r = new Rectangle(Toolkit.getDefaultToolkit()
+				.getScreenSize());
+		screenWidth = r.width;
+		screenHeight = r.height;
 		
+	}
+
+	public void start() {
+		//utworzenie gniazda serwera tcp
+		try {
+			ss = new ServerSocket(port);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		//utworzenie gniazda do połączenia z klientem
+		Socket socket;
+		try {
+			socket = ss.accept();
+			is = new ObjectInputStream(socket.getInputStream());
+			os = socket.getOutputStream();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		//odczytanie konfiguracji od klienta
+		try {
+			config = (Config) is.readObject();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//uruchomienie timera wysyłającego zrzuty
 		Timer t = new Timer();
-		t.schedule(new ScreenShoter(), 1000, 1000);
+		t.schedule(new ScreenShoter(), 100, config.period);
 		
+		//odbieranie komunikatów od klienta
 		Object o = null;
-		while ((o = is.readObject()) != null) {
-			processIncomingEvent(o);
-			
-            System.out.println("klik!");
+		try {
+			while ((o = is.readObject()) != null) {
+				processIncomingEvent(o);
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 	
@@ -169,18 +231,24 @@ public class Serwer {
 			return;
 		}
 		
-		robot.mouseMove(e.getX(), e.getY());
+		Point p = convertPoint(new Point(e.getX(), e.getY()));
+		robot.mouseMove(p.x, p.y);
 		if (e.getID() == MouseEvent.MOUSE_PRESSED) {
 			robot.mousePress(button);
 		} else if (e.getID() == MouseEvent.MOUSE_RELEASED) {
 			robot.mouseRelease(button);
 		}
-		
+	}
+	
+	private Point convertPoint(Point p) {
+		p.x = screenWidth*p.x/config.imgWidth;
+		p.y = screenHeight*p.y/config.imgHeight;
+		return p;
 	}
 
 
 	public static void main(String... args) throws Exception {
-		new Serwer();
+		new Serwer(1235).start();
 	}
 
 }
