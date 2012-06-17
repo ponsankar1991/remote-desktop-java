@@ -2,6 +2,8 @@ import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
@@ -22,8 +24,11 @@ import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 
+import pl.sieci.remote.RemoteClick;
+import pl.sieci.remote.RemoteClick.MouseState;
 
-public class Klient extends JFrame implements MouseListener {
+
+public class Klient extends JFrame implements MouseListener, KeyListener {
 
 
 	private Socket socket;
@@ -80,6 +85,8 @@ public class Klient extends JFrame implements MouseListener {
 		
 		createGUI();
 		this.addMouseListener(this);
+		this.getContentPane().addKeyListener(this);
+		this.getContentPane().requestFocusInWindow();//
 		this.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
@@ -107,6 +114,7 @@ public class Klient extends JFrame implements MouseListener {
 					try {
 						is = socket.getInputStream();
 						os = new ObjectOutputStream(socket.getOutputStream());
+						getContentPane().requestFocusInWindow();//
 					} catch (IOException e1) {
 						e1.printStackTrace();
 					}
@@ -145,9 +153,9 @@ public class Klient extends JFrame implements MouseListener {
 	}
 
 	@Override
-	public void mouseClicked(MouseEvent e) {
+	public void mousePressed(MouseEvent e) {
 		try {
-			os.writeObject(new Point(e.getX(), e.getY()));
+			os.writeObject(e);
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -155,10 +163,17 @@ public class Klient extends JFrame implements MouseListener {
 	}
 
 	@Override
-	public void mousePressed(MouseEvent e) {}
-
+	public void mouseReleased(MouseEvent e) {
+		try {
+			os.writeObject(e);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}
+	
 	@Override
-	public void mouseReleased(MouseEvent e) {}
+	public void mouseClicked(MouseEvent e) {}
 
 	@Override
 	public void mouseEntered(MouseEvent e) {}
@@ -166,6 +181,20 @@ public class Klient extends JFrame implements MouseListener {
 	@Override
 	public void mouseExited(MouseEvent e) {}
 
-	
+	@Override
+	public void keyTyped(KeyEvent e) {}
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+		try {
+			os.writeObject(e);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {}
 
 }
