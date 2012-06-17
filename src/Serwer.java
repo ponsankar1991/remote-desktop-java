@@ -1,9 +1,10 @@
 import java.awt.AWTException;
-import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.Toolkit;
 import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
@@ -25,18 +26,23 @@ import javax.imageio.ImageWriter;
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
+
+import pl.sieci.remote.RemoteClick;
 
 
-public class Serwer extends JFrame {
+public class Serwer {
+	
+	//jakość pliku jpg (od 0 do 1)
+	private float quality = 0.1f;
+	//odstęp czasowy pomiędzy wysyłanymi zrzutami ekranu (w ms)
+	private int period = 1000;
 	
 	/**
 	 * @author Wojtek
 	 * Klasa odpowiedzialna z robienie zrzutów ekranu i przesyłanie ich
 	 * strumieniem.
 	 */
-	class ScreenShoter extends TimerTask {
+	private class ScreenShoter extends TimerTask {
 		
 		private Rectangle screenRect;
 		
@@ -125,15 +131,54 @@ public class Serwer extends JFrame {
 		Timer t = new Timer();
 		t.schedule(new ScreenShoter(), 1000, 1000);
 		
-		Point p = null;
-		while ((p = (Point) is.readObject()) != null) {
-			robot.mouseMove(p.x, p.y);
-			robot.mousePress(InputEvent.BUTTON1_MASK);
-            robot.mouseRelease(InputEvent.BUTTON1_MASK);
+		Object o = null;
+		while ((o = is.readObject()) != null) {
+			processIncomingEvent(o);
+			
             System.out.println("klik!");
 		}
 	}
 	
+	private void processIncomingEvent(Object e) {
+		if (e instanceof MouseEvent) {
+			processMouseEvent((MouseEvent) e);
+		} else if (e instanceof KeyEvent) {
+			processKeyboardEvent((KeyEvent) e);
+		}
+	}
+	
+	private void processKeyboardEvent(KeyEvent e) {
+		int keyCode = e.getKeyCode();
+		robot.keyPress(keyCode);
+		robot.keyRelease(keyCode);
+	}
+	
+	private void processMouseEvent(MouseEvent e) {
+		int button;
+		switch (e.getButton()) {
+		case MouseEvent.BUTTON1:
+			button = InputEvent.BUTTON1_MASK;
+			break;
+		case MouseEvent.BUTTON2:
+			button = InputEvent.BUTTON2_MASK;
+			break;
+		case MouseEvent.BUTTON3:
+			button = InputEvent.BUTTON3_MASK;
+			break;
+		default:
+			return;
+		}
+		
+		robot.mouseMove(e.getX(), e.getY());
+		if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+			robot.mousePress(button);
+		} else if (e.getID() == MouseEvent.MOUSE_RELEASED) {
+			robot.mouseRelease(button);
+		}
+		
+	}
+
+
 	public static void main(String... args) throws Exception {
 		new Serwer();
 	}
